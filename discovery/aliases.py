@@ -2849,6 +2849,43 @@ def _fold_in(records: dict[str, ToolAliases], extra) -> None:
 
 _fold_in(TOOL_ALIASES, _TRACK_H_VOCABULARY)
 
+# SECTION 28 - solar PV. Italian phrases included: the pack was built for an
+# Italian CADPILLAR shop.
+TOOL_ALIASES.update(
+    {
+        "solar_string_sizing": ToolAliases(
+            acad=(),
+            synonyms=(
+                "string sizing", "modules per string", "string length", "pv string design",
+                "inverter mppt window", "voc at minimum temperature", "dimensionamento stringhe",
+                "moduli per stringa",
+            ),
+        ),
+        "solar_cable_sizing": ToolAliases(
+            acad=(),
+            synonyms=(
+                "cable sizing", "voltage drop", "cable section", "dc cable", "ac feeder",
+                "cable losses", "caduta di tensione", "sezione cavi", "dimensionamento cavi",
+            ),
+        ),
+        "solar_sld_draw": ToolAliases(
+            acad=(),
+            synonyms=(
+                "single line diagram", "sld", "one-line diagram", "pv electrical diagram",
+                "schema unifilare", "unifilare impianto fotovoltaico",
+            ),
+        ),
+        "solar_terrain_check": ToolAliases(
+            acad=(),
+            synonyms=(
+                "terrain slope under tables", "tracker slope", "pile reveal", "pile deviation",
+                "dtm check", "grading check", "pendenza terreno", "verifica pendenze tracker",
+                "infissione pali",
+            ),
+        ),
+    }
+)
+
 
 # The synthetic tools DISCOVERY_MODE=search adds in front of the catalog. They
 # are never registered, so they stay out of TOOL_ALIASES, whose coverage gate

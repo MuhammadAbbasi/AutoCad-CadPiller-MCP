@@ -1563,6 +1563,7 @@ _GROUP_TAG_PRIORITY = (
     "arch",
     "understand",
     "plant",
+    "solar",
     "sheet",
     "style",
     "pagesetup",
@@ -1596,6 +1597,7 @@ _GROUP_TAG_LABELS = {
     "arch": "architecture",
     "understand": "understanding",
     "plant": "plant",
+    "solar": "solar",
     "sheet": "sheet",
     "style": "styles",
     "pagesetup": "page_setup",
@@ -1881,7 +1883,7 @@ SOLID_TOOL_NAMES = frozenset(
 # mechanically should not pay for the P&ID surface, and a client that never
 # talks to a live seat should not pay for the environment surface. Styles and
 # page setup (SECTION 18/19) are drafting essentials and stay in core.
-TOOL_PACK_NAMES = ("core", "pid", "settings", "mech", "arch", "plant")
+TOOL_PACK_NAMES = ("core", "pid", "settings", "mech", "arch", "plant", "solar")
 PACK_TOOL_NAMES: dict[str, frozenset[str]] = {
     "pid": frozenset(
         {
@@ -1973,6 +1975,10 @@ PACK_TOOL_NAMES: dict[str, frozenset[str]] = {
     # comparing and checking a drawing is not a vertical. Track D's Plant 3D
     # readers join this pack.
     "plant": frozenset({"pipe_takeoff", "cable_takeoff"}),
+    # SECTION 28 - utility-scale PV electrical and civil checks.
+    "solar": frozenset(
+        {"solar_string_sizing", "solar_cable_sizing", "solar_sld_draw", "solar_terrain_check"}
+    ),
 }
 
 _active_tool_profile: dict | None = None
@@ -14665,6 +14671,152 @@ async def cable_takeoff(
             allowance=allowance,
             section_rules=section_rules,
             panel_rule=panel_rule,
+        )
+    except (ValueError, OSError) as exc:
+        raise ToolError(str(exc)) from exc
+
+
+# ── SECTION 28: Solar PV (4 tools) ──────────────────────────────────────────
+# Utility-scale PV electrical and civil checks (engineering/solar.py). The civil
+# heavy lifting (DTM, earthworks, roads, sections) stays in the host CAD
+# (CADPILLAR / Civil 3D); these tools consume its DTM as 3DFACE / polyface mesh.
+
+
+@cad_tool(summary="PV string sizing: modules per string and strings per MPPT from module and inverter data.", cost="read")
+@mcp.tool(
+    annotations={"title": "Solar: String Sizing", "readOnlyHint": True, "destructiveHint": False},
+    tags={"solar", "analysis"},
+)
+async def solar_string_sizing(
+    module: Annotated[
+        dict,
+        Field(description="voc, vmp, isc [STC], beta_voc %/°C (negative), optional beta_vmp, alpha_isc, bifacial_gain."),
+    ],
+    inverter: Annotated[
+        dict,
+        Field(description="vdc_max, mppt_min, mppt_max [V], optional isc_max_mppt [A], system_v_max (1500)."),
+    ],
+    t_cell_min: Annotated[float, Field(default=-10.0, description="Coldest cell temperature °C (site record low).")] = -10.0,
+    t_cell_max: Annotated[float, Field(default=70.0, description="Hottest cell temperature °C.")] = 70.0,
+    ctx: Context = None,
+) -> dict:
+    """Min / max modules per string (Voc at Tmin vs inverter and system voltage, Vmp at
+    Tmax / Tmin vs the MPPT window) and the strings per MPPT input by current.
+    Warnings name an infeasible window or an MPPT bound tighter than Voc."""
+    from engineering.solar import string_sizing
+
+    try:
+        return string_sizing(module, inverter, t_cell_min=t_cell_min, t_cell_max=t_cell_max)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+
+
+@cad_tool(summary="PV cable sizing: voltage drop, loss and minimum section for DC strings and AC feeders.", cost="read")
+@mcp.tool(
+    annotations={"title": "Solar: Cable Sizing", "readOnlyHint": True, "destructiveHint": False},
+    tags={"solar", "analysis"},
+)
+async def solar_cable_sizing(
+    runs: Annotated[
+        list[dict],
+        Field(
+            description="One per cable: id, system dc|ac1|ac3, length_m, voltage_v, current_a or power_kw, "
+            "cos_phi, section_mm2 (checked if given), material cu|al, parallel, x_ohm_km, ampacity_a, max_drop_pct."
+        ),
+    ],
+    max_drop_pct: Annotated[float, Field(default=1.5, gt=0, le=10, description="Default drop limit per run, %.")] = 1.5,
+    conductor_temp_c: Annotated[float, Field(default=90.0, description="Conductor temperature for resistivity, °C.")] = 90.0,
+    ctx: Context = None,
+) -> dict:
+    """Voltage drop (IEC 60364-5-52 formula), Joule loss and the smallest standard
+    section meeting the drop limit, per run plus totals. Ampacity is checked only
+    against a caller's `ampacity_a`: no installation-method table is built in."""
+    from engineering.solar import cable_sizing
+
+    try:
+        return cable_sizing(runs, max_drop_pct=max_drop_pct, conductor_temp_c=conductor_temp_c)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+
+
+@cad_tool(summary="Draw a PV single-line diagram (POD > transformers > inverters > strings) with kWp roll-up.", cost="mutate")
+@mcp.tool(
+    annotations={"title": "Solar: Single-Line Diagram", "readOnlyHint": False, "destructiveHint": False},
+    tags={"solar", "create"},
+)
+async def solar_sld_draw(
+    spec: Annotated[
+        dict,
+        Field(
+            description="Tree root: {name, type pod|switchgear|breaker|transformer|cabin|inverter|combiner|strings, "
+            "rating, kva, children:[...]}; a strings leaf has count, modules, wp."
+        ),
+    ],
+    x: Annotated[float, Field(default=0.0, description="Top-left X of the diagram.")] = 0.0,
+    y: Annotated[float, Field(default=0.0, description="Top-left Y of the diagram.")] = 0.0,
+    scale: Annotated[float, Field(default=1.0, gt=0, description="Symbol size multiplier.")] = 1.0,
+    ctx: Context = None,
+) -> dict:
+    """A top-down single-line diagram in the current drawing on SLD-SYMBOL / SLD-WIRE /
+    SLD-TEXT: transformers as two circles, inverters with the =/~ diagonal, every
+    node labelled with its rating, rolled-up kWp and an inverter's DC/AC ratio."""
+    from engineering.solar import run_sld_draw
+
+    await ctx.info("solar_sld_draw")
+    try:
+        return await run_sld_draw(_backend(ctx), spec, x0=x, y0=y, scale=scale)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+
+
+@cad_tool(summary="PV terrain check: per-table slope and pile deviation from the DTM (trackers or fixed tilt).", cost="safe")
+@mcp.tool(
+    annotations={"title": "Solar: Terrain Check", "readOnlyHint": False, "destructiveHint": False},
+    tags={"solar", "analysis"},
+)
+async def solar_terrain_check(
+    table_layer: Annotated[str, Field(description="Layer of the table / tracker footprints (closed polylines or blocks).")],
+    dtm_layer: Annotated[
+        str | None,
+        Field(default=None, description="Layer of the DTM triangles (3DFACE / polyface mesh). Omit for every layer."),
+    ] = None,
+    drawing_path: Annotated[
+        str | None, Field(default=None, description="A .dxf (or .dwg live) to read. Omit for the current drawing.")
+    ] = None,
+    table_block: Annotated[str | None, Field(default=None, description="Only INSERTs of this block count as tables.")] = None,
+    structure: Annotated[str, Field(default="tracker", description="tracker (one pile line) | fixed (front/rear posts).")] = "tracker",
+    piles: Annotated[int, Field(default=7, ge=2, le=50, description="Piles per line along the table.")] = 7,
+    max_slope_long_pct: Annotated[float | None, Field(default=None, description="Flag above this long-axis slope %.")] = None,
+    max_slope_cross_pct: Annotated[float | None, Field(default=None, description="Flag above this cross slope %.")] = None,
+    max_deviation_m: Annotated[float | None, Field(default=None, description="Flag a pile further than this from the structure line/plane, m.")] = None,
+    output: Annotated[str | None, Field(default=None, description="CSV file to write the rows to.")] = None,
+    mark: Annotated[bool, Field(default=False, description="Circle flagged tables on PV-TERRAIN-FLAG (current drawing only).")] = False,
+    ctx: Context = None,
+) -> dict:
+    """For each table: ground z range, long / cross slope of the best-fit ground plane
+    in the table's own axes, and the largest pile-to-structure deviation (the reveal
+    spread cut lengths or grading must absorb). Limits are yours - from the tracker
+    or structure manufacturer; with none given nothing is flagged but piles off the
+    DTM. Export the CADPILLAR DTM as 3D faces first. Units: drawing units = metres."""
+    from engineering.solar import run_terrain_check
+
+    path = str(validate_path(drawing_path)) if drawing_path else None
+    target = str(validate_path(output, allow_write=True, kinds=KINDS_TABLE)) if output else None
+    await ctx.info(f"solar_terrain_check: {path or 'current drawing'}")
+    try:
+        return await run_terrain_check(
+            _backend(ctx),
+            drawing_path=path,
+            dtm_layer=dtm_layer,
+            table_layer=table_layer,
+            table_block=table_block,
+            output=target,
+            mark=mark,
+            structure=structure,
+            piles=piles,
+            max_slope_long_pct=max_slope_long_pct,
+            max_slope_cross_pct=max_slope_cross_pct,
+            max_deviation_m=max_deviation_m,
         )
     except (ValueError, OSError) as exc:
         raise ToolError(str(exc)) from exc

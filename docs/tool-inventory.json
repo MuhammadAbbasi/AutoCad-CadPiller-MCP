@@ -3,10 +3,10 @@
   "schema_version": 2,
   "package_version": "1.8.0",
   "totals": {
-    "tools": 257,
+    "tools": 261,
     "resources": 13,
     "prompts": 5,
-    "groups": 28
+    "groups": 29
   },
   "groups": {
     "analysis": 12,
@@ -29,6 +29,7 @@
     "plant": 2,
     "premium": 12,
     "sheet": 11,
+    "solar": 4,
     "solids": 5,
     "styles": 10,
     "system": 7,
@@ -5096,6 +5097,110 @@
       ],
       "annotations": {
         "title": "Sheet: ISO 5457 Frame",
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "solar_cable_sizing",
+      "group": "solar",
+      "cost": "read",
+      "summary": "PV cable sizing: voltage drop, loss and minimum section for DC strings and AC feeders.",
+      "acad": [],
+      "synonyms": [
+        "cable sizing",
+        "voltage drop",
+        "cable section",
+        "dc cable",
+        "ac feeder",
+        "cable losses",
+        "caduta di tensione",
+        "sezione cavi",
+        "dimensionamento cavi"
+      ],
+      "tags": [
+        "analysis",
+        "solar"
+      ],
+      "annotations": {
+        "title": "Solar: Cable Sizing",
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "solar_sld_draw",
+      "group": "solar",
+      "cost": "mutate",
+      "summary": "Draw a PV single-line diagram (POD > transformers > inverters > strings) with kWp roll-up.",
+      "acad": [],
+      "synonyms": [
+        "single line diagram",
+        "sld",
+        "one-line diagram",
+        "pv electrical diagram",
+        "schema unifilare",
+        "unifilare impianto fotovoltaico"
+      ],
+      "tags": [
+        "create",
+        "solar"
+      ],
+      "annotations": {
+        "title": "Solar: Single-Line Diagram",
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "solar_string_sizing",
+      "group": "solar",
+      "cost": "read",
+      "summary": "PV string sizing: modules per string and strings per MPPT from module and inverter data.",
+      "acad": [],
+      "synonyms": [
+        "string sizing",
+        "modules per string",
+        "string length",
+        "pv string design",
+        "inverter mppt window",
+        "voc at minimum temperature",
+        "dimensionamento stringhe",
+        "moduli per stringa"
+      ],
+      "tags": [
+        "analysis",
+        "solar"
+      ],
+      "annotations": {
+        "title": "Solar: String Sizing",
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "solar_terrain_check",
+      "group": "solar",
+      "cost": "safe",
+      "summary": "PV terrain check: per-table slope and pile deviation from the DTM (trackers or fixed tilt).",
+      "acad": [],
+      "synonyms": [
+        "terrain slope under tables",
+        "tracker slope",
+        "pile reveal",
+        "pile deviation",
+        "dtm check",
+        "grading check",
+        "pendenza terreno",
+        "verifica pendenze tracker",
+        "infissione pali"
+      ],
+      "tags": [
+        "analysis",
+        "solar"
+      ],
+      "annotations": {
+        "title": "Solar: Terrain Check",
+        "readOnlyHint": false,
         "destructiveHint": false
       }
     },
