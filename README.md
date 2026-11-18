@@ -15,7 +15,7 @@ it as an image and save it.
 
 ## Install
 
-1. Download this repository (or just its [`cadbridge/`](cadbridge) folder) to the PC.
+1. [Download the ZIP](https://github.com/MuhammadAbbasi/AutoCad-CadPiller-MCP/archive/refs/heads/main.zip) (or clone the repository) and unzip it on the PC. Only the [`cadbridge/`](cadbridge) folder is needed.
 2. If this Windows user has never started the CAD, start it once and close it.
 3. Double-click **[`cadbridge/Install.cmd`](cadbridge/Install.cmd)**. It works in five steps:
 
@@ -100,8 +100,8 @@ These are the rules the current design follows, each learnt the hard way:
 ## Example: a 2-bedroom house on a plot
 
 [`cadbridge/examples/`](cadbridge/examples) contains a test drawn live in CAD&PILLAR on a plot plan, in millimetres:
-- `house_test2.py`: the sketch, with 15 cm walls, 60 cm doors, room areas and dimensions.
-- `house_test2_enhance.py`: the enhancement. It defines blocks (WC, basin, shower, kitchen sink, hob, fridge, beds,
+- `house_sketch.py`: the sketch, with 15 cm walls, 60 cm doors, room areas and dimensions.
+- `house_enhance.py`: the enhancement. It defines blocks (WC, basin, shower, kitchen sink, hob, fridge, beds,
   wardrobes, sofa, dining set, bench, shrub), uses CAD&PILLAR's own tree symbol, and adds a lawn hatch that follows
   the curved plot edge, plus a paved terrace and path.
 

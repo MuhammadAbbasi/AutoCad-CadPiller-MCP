@@ -70,3 +70,6 @@ plugin/evals/mocks/
 # AutoCAD writes its plot-and-publish log into the cwd of the plotting process
 # (scripts/smoke_settings_com.py plots from the repo root).
 plot.log
+
+# Private per-organisation install kits (a branded copy of cadbridge/): never published.
+/office/

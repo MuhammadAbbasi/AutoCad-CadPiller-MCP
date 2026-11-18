@@ -1,5 +1,5 @@
 @echo off
-title CAD^&PILLAR MCP - uninstall
+title CadBridge - AutoCAD / CAD^&PILLAR MCP - uninstall
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0installer.ps1" -Uninstall %*
 echo.
 pause

@@ -1,6 +1,6 @@
-"""Stage 2 of the test2 house (after the sketch was accepted): real blocks for fixtures and furniture,
+"""Stage 2 of the house (after the sketch was accepted): real blocks for fixtures and furniture,
 CADPILLAR's own 2D tree symbol, shrubs, a garden bench, lawn hatch following the curved plot edge,
-paved terrace and entrance path. Live in CADPILLAR through the cadpillar MCP; units mm.
+paved terrace and entrance path. Live through the cadbridge MCP; units mm.
 """
 import asyncio
 import math

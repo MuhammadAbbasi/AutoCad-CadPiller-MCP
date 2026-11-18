@@ -18,4 +18,4 @@ To remove it, double-click **`Uninstall.cmd`**. The full documentation is in the
 | `bin/net8/CadBridge.dll` | plugin for AutoCAD 2025+ and CAD&PILLAR 11 (.NET 8) |
 | `bin/net48/CadBridge.dll` | plugin for AutoCAD 2021-2024 (.NET Framework 4.8) |
 | `src/` | plugin source (`CadBridge.cs`), its build script, the MCP server (`cadbridge_mcp.py`) |
-| `examples/` | the 2-bedroom house test (sketch, then blocks and landscape) |
+| `examples/` | a 2-bedroom house example (sketch, then blocks and landscape) |

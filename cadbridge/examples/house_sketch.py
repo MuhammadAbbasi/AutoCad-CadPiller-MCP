@@ -1,8 +1,8 @@
-"""2-bedroom house on the test2.dwg plot, drawn live in CADPILLAR through the cadpillar MCP (no DXF).
+"""A 2-bedroom house on a plot plan, drawn live through the cadbridge MCP (no DXF).
 
 Walls 150 mm (15 cm), doors 600 mm. Drawing units: mm. Plan origin (X0, Y0) keeps >= ~0.7 m from the
 plot's curved rear boundary and 1 m from the front edge (y = 2952).
-Run with Autocad-MCP/.venv python while CADPILLAR has test2.dwg open (or pass --open).
+Run with the CadBridge venv python while the CAD has the plot drawing open (or pass --open).
 """
 import asyncio
 
