@@ -1,24 +1,45 @@
-"""MCP server that edits the drawing open in CAD&PILLAR 11 live, as DWG (no DXF round trip).
+"""MCP server that edits the drawing open in AutoCAD 2025+ or CAD&PILLAR 11 live, as DWG (no DXF round trip).
 
-CADPILLAR's ActiveX object is disabled by the OEM, so this talks to the CadBridge plugin
-(bridge/CadBridge.cs, autoloaded inside CADPILLAR) over the named pipe \\\\.\\pipe\\cadbridge.
+It talks to the CadBridge plugin (src/CadBridge.cs, autoloaded inside each CAD) over the per-process named
+pipe \\\\.\\pipe\\cadbridge-<exe>-<pid>; no COM, which some OEMs (CAD&PILLAR) disable.
 Coordinates are drawing units (WCS), angles in degrees CCW.
 """
 import json
+import os
+import re
 import time
 from pathlib import Path
 
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image
 
-PIPE = r"\\.\pipe\cadbridge"
+_target: str | None = None  # pipe name chosen with cad_use; None = the only running CAD
+
+
+def pipes() -> list[str]:
+    """Running CadBridge instances: pipe names like cadbridge-acad-1234 / cadbridge-cadp-5678."""
+    return sorted(p for p in os.listdir("\\\\.\\pipe\\") if re.fullmatch(r"cadbridge-[a-z0-9_.]+-\d+", p, re.I))
+
+
+def pipe_path() -> str:
+    found = pipes()
+    if _target:
+        if _target not in found:
+            raise RuntimeError(f"{_target} is no longer running; running: {found or 'none'} (use cad_use)")
+        return "\\\\.\\pipe\\" + _target
+    if not found:
+        raise RuntimeError("No CAD with CadBridge is running: start AutoCAD or CAD&PILLAR (the plugin loads at startup)")
+    if len(found) > 1:
+        raise RuntimeError(f"Several CADs are running: {found}. Pick one with cad_use.")
+    return "\\\\.\\pipe\\" + found[0]
 
 
 def call(req: dict, retries: int = 20):
-    """One request/response over the pipe. Retries while the single-instance pipe is busy."""
+    """One request/response over the pipe. Retries while the pipe is busy."""
+    path = pipe_path()
     for i in range(retries):
         try:
-            with open(PIPE, "r+b", buffering=0) as f:
+            with open(path, "r+b", buffering=0) as f:
                 f.write((json.dumps(req) + "\n").encode("utf-8"))
                 line, empty = b"", 0
                 while not line.endswith(b"\n") and empty < 50:
@@ -31,7 +52,7 @@ def call(req: dict, retries: int = 20):
             break
         except OSError:  # pipe busy, or briefly absent while the server re-creates it
             if i == retries - 1:
-                raise RuntimeError("CadBridge pipe not reachable: start CAD&PILLAR (the plugin loads at startup)")
+                raise RuntimeError(f"CadBridge pipe {path} not reachable: is the CAD still running?")
             time.sleep(0.1)
     if not line.endswith(b"\n"):  # not retried: the request may already have been applied
         raise RuntimeError("CadBridge closed the connection without a reply; check the drawing and %APPDATA%\\CadBridge\\cadbridge.log")
@@ -41,13 +62,29 @@ def call(req: dict, retries: int = 20):
     return resp["result"]
 
 
-mcp = FastMCP("cadpillar")
+mcp = FastMCP("cadbridge")
 
 
 @mcp.tool
 def cad_status() -> dict:
-    """Check the bridge and list the open drawings (active one first in CAD's order)."""
-    return {"ping": call({"op": "ping"}), "docs": call({"op": "docs"})}
+    """Running CADs (AutoCAD / CAD&PILLAR) with CadBridge, which one is targeted, and its open drawings."""
+    running = pipes()
+    out = {"running": running, "target": _target or (running[0] if len(running) == 1 else None)}
+    if out["target"]:
+        out["cad"] = call({"op": "ping"})
+        out["docs"] = call({"op": "docs"})
+    return out
+
+
+@mcp.tool
+def cad_use(name: str) -> dict:
+    """Target one running CAD when several run: a pipe name from cad_status, or just 'acad' / 'cadp'."""
+    global _target
+    match = [p for p in pipes() if p == name or p.split("-")[1] == name.lower()]
+    if len(match) != 1:
+        raise RuntimeError(f"'{name}' matches {match or 'nothing'}; running: {pipes()}")
+    _target = match[0]
+    return {"target": _target, "cad": call({"op": "ping"})}
 
 
 @mcp.tool
@@ -93,15 +130,21 @@ def cad_ops(ops: list[dict]) -> list:
 
 @mcp.tool
 def cad_command(text: str) -> str:
-    """Queue a command line string in the active drawing (any CAD or CADPILLAR command, e.g. "_.ZOOM _E").
+    """Queue a command line string in the active drawing (any AutoCAD / CAD&PILLAR command, e.g. "_.ZOOM _E").
     Asynchronous: it runs after this returns; read results back with cad_list / cad_info."""
     return call({"op": "command", "text": text})
 
 
 @mcp.tool
 def cad_open(path: str, read_only: bool = False) -> str:
-    """Open a DWG in CADPILLAR and make it active."""
+    """Open a DWG in the CAD (or activate it if already open)."""
     return call({"op": "open", "path": path, "read_only": read_only})
+
+
+@mcp.tool
+def cad_new(template: str = "") -> str:
+    """Create a new drawing (optionally from a .dwt template) and make it active."""
+    return call({"op": "new", "template": template})
 
 
 @mcp.tool
@@ -111,20 +154,27 @@ def cad_save(path: str | None = None) -> str:
 
 
 def screenshot_png(path: str | None = None, max_px: int = 1600) -> bytes:
-    """PNG of the CAD&PILLAR main window, captured with PrintWindow (no focus change)."""
+    """PNG of the targeted CAD's main window, captured with PrintWindow (no focus change)."""
     import ctypes
     import io
 
     import win32gui
+    import win32process
     import win32ui
     from PIL import Image as PILImage
 
-    found = []
-    win32gui.EnumWindows(lambda h, _: found.append(h) if win32gui.IsWindowVisible(h)
-                         and win32gui.GetWindowText(h).startswith("CAD&PILLAR") else None, None)
+    pid = int(pipe_path().rsplit("-", 1)[1])
+    found = []  # (area, hwnd) of the process's visible titled top-level windows; the main frame is the largest
+
+    def visit(h, _):
+        if win32gui.IsWindowVisible(h) and win32gui.GetWindowText(h) and win32process.GetWindowThreadProcessId(h)[1] == pid:
+            l, t, r, b = win32gui.GetWindowRect(h)
+            found.append(((r - l) * (b - t), h))
+
+    win32gui.EnumWindows(visit, None)
     if not found:
-        raise RuntimeError("CAD&PILLAR window not found")
-    hwnd = found[0]
+        raise RuntimeError(f"no window found for CAD process {pid}")
+    hwnd = max(found)[1]
     l, t, r, b = win32gui.GetWindowRect(hwnd)
     w, h = r - l, b - t
     hdc = win32gui.GetWindowDC(hwnd)
@@ -152,7 +202,7 @@ def screenshot_png(path: str | None = None, max_px: int = 1600) -> bytes:
 
 @mcp.tool
 def cad_screenshot(zoom_extents: bool = True) -> Image:
-    """Image of the CAD&PILLAR window, to show the user the current drawing (e.g. a sketch to accept)."""
+    """Image of the CAD window, to show the user the current drawing (e.g. a sketch to accept)."""
     if zoom_extents:
         call({"op": "command", "text": "_.ZOOM _E"})
         time.sleep(1.0)  # the command is queued; let it run
