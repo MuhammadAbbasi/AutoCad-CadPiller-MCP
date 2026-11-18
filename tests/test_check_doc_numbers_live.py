@@ -34,7 +34,8 @@ def _claim(script: str, year: int = 2026, release: str | None = None) -> str:
 
 def _tree(tmp_path: Path, claude: str, readme: str = "") -> Path:
     (tmp_path / "CLAUDE.md").write_text(claude, encoding="utf-8")
-    (tmp_path / "README.md").write_text(readme, encoding="utf-8")
+    (tmp_path / "docs").mkdir(exist_ok=True)
+    (tmp_path / "docs/autocad-mcp-pro.md").write_text(readme, encoding="utf-8")
     (tmp_path / cdn.LIVE_DIR).mkdir(parents=True)
     return tmp_path
 
@@ -174,7 +175,7 @@ def test_any_wording_of_an_unbacked_live_run_is_named(tmp_path, sentence):
     root = _tree(tmp_path, "", readme="# Title\n\nSome prose.\n\n" + sentence + "\n")
     _harness_file(root, "pid", "pass", "1.7.0")
     problems, table = cdn.check_live_claims(root, release="1.8.0")
-    assert len(problems) == 1 and problems[0].startswith("UNBACKED  README.md:5:"), problems
+    assert len(problems) == 1 and problems[0].startswith("UNBACKED  docs/autocad-mcp-pro.md:5:"), problems
     assert all(row["evidence"] is None for row in table)
 
 
@@ -225,7 +226,7 @@ def test_a_seat_claim_is_backed_only_by_a_pass_on_that_years_seat(tmp_path):
 
 
 def test_the_readme_live_claims_of_this_tree_are_read():
-    # review 1.8-25a: live_claims(files=("README.md",)) was [] on this tree
-    readme = cdn.live_claims(files=("README.md",))
+    # review 1.8-25a: live_claims(files=("docs/autocad-mcp-pro.md",)) was [] on this tree
+    readme = cdn.live_claims(files=("docs/autocad-mcp-pro.md",))
     assert readme, "README states live runs on AutoCAD 2026; the reader must find them"
     assert {claim["year"] for claim in readme} == {2026}

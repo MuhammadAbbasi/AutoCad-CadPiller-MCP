@@ -117,7 +117,7 @@ LIVE_MATRIX = "matrix.json"
 LIVE_HARNESS_SCHEMA = "acadmcp-live-harness/1"
 
 #: The documents whose live claims are held to evidence.
-LIVE_CLAIM_FILES: tuple[str, ...] = ("README.md", "CLAUDE.md")
+LIVE_CLAIM_FILES: tuple[str, ...] = ("docs/autocad-mcp-pro.md", "CLAUDE.md")
 
 #: The canonical sentence, ``executed live once by `scripts/smoke_x_com.py`
 #: (AutoCAD 2026)`` with the pinned form ``(AutoCAD 2026, 1.8.0)``. Group 1 the
@@ -415,28 +415,28 @@ def derived() -> dict[str, object]:
 #: itself a failure: the sentence it was written for has moved, and a silent
 #: no-op gate is worse than no gate.
 CHECKS: list[tuple[str, str, str, str]] = [
-    ("README.md", "release snapshot tools", r"release snapshot:\*\*\s*(\d+) tools", "tools"),
+    ("docs/autocad-mcp-pro.md", "release snapshot tools", r"release snapshot:\*\*\s*(\d+) tools", "tools"),
     (
-        "README.md",
+        "docs/autocad-mcp-pro.md",
         "release snapshot resources",
         r"release snapshot:.*?(\d+) resources",
         "resources",
     ),
     (
-        "README.md",
+        "docs/autocad-mcp-pro.md",
         "release snapshot prompts",
         r"release snapshot:.*?(\d+) prompt templates",
         "prompts",
     ),
-    ("README.md", "A/B suite size", r"(\d+) deterministic headless checks", "ab_total"),
+    ("docs/autocad-mcp-pro.md", "A/B suite size", r"(\d+) deterministic headless checks", "ab_total"),
     (
-        "README.md",
+        "docs/autocad-mcp-pro.md",
         "A/B baseline pass",
         AB_BASELINE_LABEL + r" \*\(baseline\)\* \| (\d+) / \d+",
         "ab_old_pass",
     ),
     (
-        "README.md",
+        "docs/autocad-mcp-pro.md",
         "A/B suite denominator",
         AB_BASELINE_LABEL + r" \*\(baseline\)\* \| \d+ / (\d+)",
         "ab_total",
@@ -455,19 +455,19 @@ CHECKS: list[tuple[str, str, str, str]] = [
         "ab_total",
     ),
     (
-        "README.md",
+        "docs/autocad-mcp-pro.md",
         "release snapshot collected tests",
         r"release snapshot:.*?(\d+) collected tests",
         "collected_tests",
     ),
     (
-        "README.md",
+        "docs/autocad-mcp-pro.md",
         "A/B baseline pass rate",
         AB_BASELINE_LABEL + r" \*\(baseline\)\* \| \d+ / \d+ \| ([\d.]+) %",
         "ab_old_pct",
     ),
     (
-        "README.md",
+        "docs/autocad-mcp-pro.md",
         "A/B fixed count",
         AB_CURRENT_LABEL
         + r"\*\* \*\(this release\)\* \| \*\*\d+ / \d+\*\* \| \*\*\d+ %\*\* \| (\d+)",

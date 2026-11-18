@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CadBridge (the live route, `cadbridge/`): read this first
+
+`cadbridge/` is the universal live-DWG bridge and what the root README documents: a plugin inside the CAD
+(`src/CadBridge.cs`, one source, builds `bin/net8` for AutoCAD 2025+ / CAD&PILLAR 11 and `bin/net48` for AutoCAD
+2021-2024) serving JSON on `\\.\pipe\cadbridge-<exe>-<pid>`, plus the fastmcp server `src/cadbridge_mcp.py`
+(`cad_*` tools). Rules:
+- No COM in CadBridge (CAD&PILLAR disables it); every request runs on the CAD main thread via the WPF dispatcher.
+- Keep `CadBridge.cs` compiling for both targets: no System.Text.Json (use `MiniJson`), and `#if NETFRAMEWORK` only
+  for APIs that differ (pipe ACL).
+- Build with `pwsh cadbridge/src/build.ps1` (Roslyn from PowerShell 7, AutoCAD.NET 25.0 / 24.0 NuGet references);
+  commit the rebuilt `bin/` DLLs with the source change.
+- `cadbridge/installer.ps1` must stay Windows PowerShell 5.1-compatible and ASCII-only.
+- Never close or kill a running CAD from a script or agent: ask the user to close it.
+- Commit messages carry no Co-Authored-By trailer.
+
+The rest of this file documents the original COM / ezdxf server (README moved to `docs/autocad-mcp-pro.md`).
+
 ## Project Overview
 
 AutoCAD MCP Pro is a FastMCP 3.0 server that exposes about two hundred and fifty tools, a dozen resources, and five prompt templates for AutoCAD automation. (The exact tool count is reported dynamically by `system_status` / `system_about` — never hardcode it.) It runs with a dual-engine architecture: a live COM backend (Windows/AutoCAD required) and a headless ezdxf backend (works anywhere).

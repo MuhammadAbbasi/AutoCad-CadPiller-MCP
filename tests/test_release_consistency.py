@@ -85,7 +85,7 @@ def test_changelog_top_release_matches_pyproject() -> None:
 
 
 def _readme_snapshot() -> tuple[str, int, int, int]:
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "docs/autocad-mcp-pro.md").read_text(encoding="utf-8")
     # The snapshot may wrap across blockquote lines; join continuations first.
     flat = re.sub(r"\n>\s*", " ", readme)
     match = re.search(
@@ -232,7 +232,7 @@ def test_readme_contains_mcp_name_marker() -> None:
     """PyPI ownership validation for the MCP registry needs this marker in the
     README (which ships to PyPI as the long description)."""
     manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "docs/autocad-mcp-pro.md").read_text(encoding="utf-8")
     assert f"mcp-name: {manifest['name']}" in readme
 
 
@@ -380,7 +380,7 @@ def _release_versions() -> dict[str, str]:
 
     readme_pins = re.findall(
         rf"{re.escape(name)}\[[^\]]*\]==(\d+\.\d+\.\d+)",
-        (ROOT / "README.md").read_text(encoding="utf-8"),
+        (ROOT / "docs/autocad-mcp-pro.md").read_text(encoding="utf-8"),
     )
     found["README plugin pin"] = (
         readme_pins[0] if len(readme_pins) == 1 else f"<{len(readme_pins)} pins>"
@@ -567,7 +567,7 @@ def _slug(heading: str) -> str:
 def test_every_in_page_link_in_the_readme_lands_on_a_heading() -> None:
     """The nav row links `#whats-new-in-<release>`; renaming the section for a
     release without the link leaves a dead anchor, on PyPI's page too."""
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "docs/autocad-mcp-pro.md").read_text(encoding="utf-8")
     slugs = {_slug(h) for h in re.findall(r"^#{1,6} (.+)$", readme, re.M)}
     anchors = set(re.findall(r"\]\(#([\w\-]+)\)", readme))
     assert anchors, "README has no in-page links"
@@ -577,6 +577,6 @@ def test_every_in_page_link_in_the_readme_lands_on_a_heading() -> None:
 def test_the_readme_install_names_the_marketplace_and_plugin_the_manifests_define() -> None:
     marketplace = _json_file(".claude-plugin/marketplace.json")
     plugin = _json_file("plugin/.claude-plugin/plugin.json")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "docs/autocad-mcp-pro.md").read_text(encoding="utf-8")
     assert "claude plugin marketplace add U-C4N/Autocad-MCP" in readme
     assert f"claude plugin install {plugin['name']}@{marketplace['name']}" in readme

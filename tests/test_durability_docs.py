@@ -22,7 +22,7 @@ REFERENCE = Path("references") / "recovery-and-transactions.md"
 DOCS = (
     ROOT / ".claude" / "skills" / "autocad-mcp-premium" / REFERENCE,
     ROOT / "plugin" / "skills" / "premium" / REFERENCE,
-    ROOT / "README.md",
+    ROOT / "docs/autocad-mcp-pro.md",
 )
 
 #: What the live engine checkpoints before: ``ComBackend.transaction_begin``
