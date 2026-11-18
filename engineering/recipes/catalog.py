@@ -88,7 +88,7 @@ RECIPE_IDS: tuple[str, ...] = (
 BACKENDS = ("ezdxf", "com")
 #: ``server.TOOL_PACK_NAMES`` - restated so the catalog never imports the server;
 #: tests/test_recipes.py holds the two equal.
-PACKS = ("core", "pid", "settings", "mech", "arch", "plant")
+PACKS = ("core", "pid", "settings", "mech", "arch", "plant", "solar")
 PROFILES = ("full", "lean")
 OPERATORS = (
     "eq",
